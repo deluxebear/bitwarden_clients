@@ -85,7 +85,9 @@ export class OrganizationDataOwnershipPolicyV2Component
   override async ngOnInit(): Promise<void> {
     super.ngOnInit();
 
-    const orgId = this.policyResponse()?.organizationId as OrganizationId | undefined;
+    const orgId = (this.organizationId() ?? this.policyResponse()?.organizationId) as
+      | OrganizationId
+      | undefined;
     if (orgId) {
       const userId = await firstValueFrom(this.accountService.activeAccount$.pipe(getUserId));
       const org = await firstValueFrom(

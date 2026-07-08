@@ -63,8 +63,10 @@ export class PolicyEditDrawerComponent implements AfterViewInit {
     enabled: [this.enabled],
   });
 
+  protected readonly data: PolicyEditDialogData;
+
   constructor(
-    @Inject(DIALOG_DATA) protected readonly data: PolicyEditDialogData,
+    @Inject(DIALOG_DATA) data: unknown,
     private readonly accountService: AccountService,
     private readonly policyApiService: PolicyApiServiceAbstraction,
     private readonly i18nService: I18nService,
@@ -75,7 +77,9 @@ export class PolicyEditDrawerComponent implements AfterViewInit {
     private readonly keyService: KeyService,
     private readonly dialogService: DialogService,
     private readonly authService: AuthService,
-  ) {}
+  ) {
+    this.data = data as PolicyEditDialogData;
+  }
 
   get policy(): BasePolicyEditDefinition {
     return this.data.policy;
@@ -151,6 +155,7 @@ export class PolicyEditDrawerComponent implements AfterViewInit {
     const componentRef = policyFormRef.createComponent(this.getComponentToLoad());
     componentRef.setInput("policy", this.data.policy);
     componentRef.setInput("policyResponse", policyResponse);
+    componentRef.setInput("organizationId", this.data.organization.id);
     const component = componentRef.instance;
     this.policyComponent.set(component);
     this.policyEnabled.set(policyResponse.enabled);

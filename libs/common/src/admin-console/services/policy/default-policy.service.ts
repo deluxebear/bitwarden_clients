@@ -274,9 +274,10 @@ export class DefaultPolicyService implements PolicyService {
 
   async upsert(policy: PolicyData, userId: UserId): Promise<void> {
     await this.policyState(userId).update((policies) => {
-      policies ??= {};
-      policies[policy.id] = policy;
-      return policies;
+      return {
+        ...(policies ?? {}),
+        [policy.id]: policy,
+      };
     });
   }
 

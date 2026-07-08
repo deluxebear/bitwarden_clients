@@ -211,6 +211,7 @@ export class PolicyEditDialogComponent implements AfterViewInit {
     const componentRef = policyFormRef.createComponent(this.getComponentToLoad());
     componentRef.setInput("policy", this.data.policy);
     componentRef.setInput("policyResponse", policyResponse);
+    componentRef.setInput("organizationId", this.data.organization.id);
     const component = componentRef.instance;
     this.policyComponent.set(component);
     this.policyEnabled.set(policyResponse.enabled);

@@ -105,6 +105,8 @@ describe("PolicyEditDialogComponent", () => {
       .mockReturnValue({ createComponent: jest.fn().mockReturnValue(mockComponentRef) });
 
     await component.ngAfterViewInit();
+
+    expect(mockComponentRef.setInput).toHaveBeenCalledWith("organizationId", ORG_ID);
   }
 
   describe("saveDisabled", () => {

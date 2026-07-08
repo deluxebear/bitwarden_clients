@@ -46,12 +46,14 @@ describe("DefaultNewPolicyService", () => {
   });
 
   it("upsert adds a policy to the existing state", async () => {
-    singleUserState.nextState(
-      arrayToRecord([policyData("1", "org1", PolicyType.MaximumVaultTimeout, true)]),
-    );
+    const initialPolicies = arrayToRecord([
+      policyData("1", "org1", PolicyType.MaximumVaultTimeout, true),
+    ]);
+    singleUserState.nextState(initialPolicies);
 
     await service.upsert(policyData("2", "org1", PolicyType.DisableSend, true), userId);
 
+    expect(singleUserState.nextMock.mock.calls[0][0]).not.toBe(initialPolicies);
     const result = await firstValueFrom(singleUserState.state$);
     expect(Object.keys(result!)).toHaveLength(2);
     expect(result!["2" as PolicyId].id).toBe("2");

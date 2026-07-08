@@ -87,17 +87,17 @@ describe("PolicyService", () => {
   });
 
   it("upsert", async () => {
-    singleUserState.nextState(
-      arrayToRecord([
-        policyData("1", "test-organization", PolicyType.MaximumVaultTimeout, true, { minutes: 14 }),
-      ]),
-    );
+    const initialPolicies = arrayToRecord([
+      policyData("1", "test-organization", PolicyType.MaximumVaultTimeout, true, { minutes: 14 }),
+    ]);
+    singleUserState.nextState(initialPolicies);
 
     await policyService.upsert(
       policyData("99", "test-organization", PolicyType.DisableSend, true),
       userId,
     );
 
+    expect(singleUserState.nextMock.mock.calls[0][0]).not.toBe(initialPolicies);
     expect(await firstValueFrom(policyService.policies$(userId))).toEqual([
       {
         id: "1",

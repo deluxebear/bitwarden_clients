@@ -1,4 +1,4 @@
-import { Directive, OnInit, Signal, inject, input, signal } from "@angular/core";
+import { Directive, OnInit, Signal, computed, inject, input, signal } from "@angular/core";
 import { FormControl, FormGroup } from "@angular/forms";
 import { Observable, defer, firstValueFrom, of, switchMap } from "rxjs";
 import { Constructor } from "type-fest";
@@ -152,11 +152,14 @@ export abstract class BasePolicyEditComponent implements OnInit {
   readonly policy = input<BasePolicyEditDefinition | undefined>(undefined);
   readonly currentStep = input<Signal<number>>(signal(0));
   readonly organizationId = input<string | undefined>(undefined);
+  protected readonly resolvedOrganizationId = computed(
+    () => this.organizationId() ?? this.policyResponse()?.organizationId,
+  );
   readonly organization$ = defer(() =>
     this.accountService.activeAccount$.pipe(
       getUserId,
       switchMap((userId) => this.organizationServcie.organizations$(userId)),
-      getById(this.organizationId() ?? this.policyResponse()?.organizationId),
+      getById(this.resolvedOrganizationId()),
     ),
   );
 
@@ -216,17 +219,16 @@ export abstract class BasePolicyEditComponent implements OnInit {
 
     assertNonNullish(orgKeys, "Org keys not provided");
 
-    const orgKey = orgKeys[this.organizationId() as OrganizationId];
+    const organizationId = this.resolvedOrganizationId();
+    assertNonNullish(organizationId, "Organization ID not provided");
+
+    const orgKey = orgKeys[organizationId as OrganizationId];
 
     assertNonNullish(orgKey, "No encryption key for this organization.");
 
     const request = await this.buildRequest(orgKey);
 
-    await this.policyApiService.putPolicy(
-      this.organizationId() ?? "",
-      this.policy()!.type,
-      request,
-    );
+    await this.policyApiService.putPolicy(organizationId, this.policy()!.type, request);
   }
 
   protected loadData() {
