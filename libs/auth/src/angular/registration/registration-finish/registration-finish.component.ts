@@ -208,6 +208,11 @@ export class RegistrationFinishComponent implements OnInit, OnDestroy {
         return;
       }
 
+      if (authenticationResult?.requiresDeviceVerification) {
+        await this.router.navigate(["/device-verification"]);
+        return;
+      }
+
       await this.loginSuccessHandlerService.run(
         authenticationResult.userId,
         authenticationResult.masterPassword ?? null,
