@@ -21,6 +21,54 @@ import { DomainVerificationComponent } from "./manage/domain-verification/domain
 import { ScimV2Component } from "./manage/scim-v2.component";
 import { ScimComponent } from "./manage/scim.component";
 
+export const organizationSettingsRoutes: Routes = [
+  {
+    path: "domain-verification",
+    component: DomainVerificationComponent,
+    canActivate: [organizationPermissionsGuard((org) => org.canManageDomainVerification)],
+    data: {
+      titleId: "claimedDomains",
+    },
+  },
+  {
+    path: "sso",
+    component: SsoManageComponent,
+    canActivate: [organizationPermissionsGuard((org) => org.canManageSso)],
+    data: {
+      titleId: "singleSignOn",
+    },
+  },
+  ...componentRouteSwap(
+    ScimComponent,
+    ScimV2Component,
+    () =>
+      inject(ConfigService)
+        .getFeatureFlag$(FeatureFlag.GenerateInviteLink)
+        .pipe(map((v) => v === true)),
+    {
+      path: "scim",
+      canActivate: [organizationPermissionsGuard((org) => org.canManageScim)],
+      data: { titleId: "scim" },
+    },
+    {
+      path: "scim",
+      canActivate: [organizationPermissionsGuard((org) => org.canManageScim)],
+      data: { titleId: "scimV2" },
+    },
+  ),
+  {
+    path: "device-approvals",
+    loadComponent: () =>
+      import("./manage/device-approvals/device-approvals.component").then(
+        (mod) => mod.DeviceApprovalsComponent,
+      ),
+    canActivate: [organizationPermissionsGuard((org) => org.canManageDeviceApprovals)],
+    data: {
+      titleId: "deviceApprovals",
+    },
+  },
+];
+
 const routes: Routes = [
   {
     path: "organizations/:organizationId",
@@ -30,53 +78,7 @@ const routes: Routes = [
       {
         path: "settings",
         canActivate: [organizationPermissionsGuard(canAccessSettingsTab)],
-        children: [
-          {
-            path: "domain-verification",
-            component: DomainVerificationComponent,
-            canActivate: [organizationPermissionsGuard((org) => org.canManageDomainVerification)],
-            data: {
-              titleId: "claimedDomains",
-            },
-          },
-          {
-            path: "sso",
-            component: SsoManageComponent,
-            canActivate: [organizationPermissionsGuard((org) => org.canManageSso)],
-            data: {
-              titleId: "singleSignOn",
-            },
-          },
-          ...componentRouteSwap(
-            ScimComponent,
-            ScimV2Component,
-            () =>
-              inject(ConfigService)
-                .getFeatureFlag$(FeatureFlag.GenerateInviteLink)
-                .pipe(map((v) => v === true)),
-            {
-              path: "scim",
-              canActivate: [organizationPermissionsGuard((org) => org.canManageScim)],
-              data: { titleId: "scim" },
-            },
-            {
-              path: "scim",
-              canActivate: [organizationPermissionsGuard((org) => org.canManageScim)],
-              data: { titleId: "scimV2" },
-            },
-          ),
-          {
-            path: "device-approvals",
-            loadComponent: () =>
-              import("./manage/device-approvals/device-approvals.component").then(
-                (mod) => mod.DeviceApprovalsComponent,
-              ),
-            canActivate: [organizationPermissionsGuard((org) => org.canManageDeviceApprovals)],
-            data: {
-              titleId: "deviceApprovals",
-            },
-          },
-        ],
+        children: organizationSettingsRoutes,
       },
       {
         path: "reporting/reports",

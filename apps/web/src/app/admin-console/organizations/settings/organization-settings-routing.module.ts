@@ -88,6 +88,9 @@ function getSettingsRoute(organization: Organization) {
   if (organization.canAccessImport) {
     return ["tools", "import"];
   }
+  if (organization.canManageDomainVerification) {
+    return "domain-verification";
+  }
   if (organization.canManageSso) {
     return "sso";
   }
