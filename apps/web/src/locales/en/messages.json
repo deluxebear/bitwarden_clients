@@ -13380,6 +13380,48 @@
   "noOrganizations": {
     "message": "There are no organizations to list"
   },
+  "serverUsers": {
+    "message": "Server user management"
+  },
+  "serverUsersDescription": {
+    "message": "Registered accounts on this self-hosted server. Users who are not organization members can still sign in until their server account is deleted."
+  },
+  "searchServerUsers": {
+    "message": "Search server users"
+  },
+  "noServerUsersInList": {
+    "message": "No server users found."
+  },
+  "organizationMemberships": {
+    "message": "Organization memberships"
+  },
+  "deleteServerUser": {
+    "message": "Delete server user"
+  },
+  "deleteServerUserConfirmation": {
+    "message": "Delete $EMAIL$ from this self-hosted server? This permanently removes the account and its personal vault data.",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "user@example.com"
+      }
+    }
+  },
+  "deletedServerUser": {
+    "message": "Deleted $EMAIL$.",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "user@example.com"
+      }
+    }
+  },
+  "loadServerUsersFailed": {
+    "message": "Could not load server users."
+  },
+  "deleteServerUserFailed": {
+    "message": "Could not delete server user."
+  },
   "yourProviderSubscriptionCredit": {
     "message": "Your provider subscription will receive a credit for any remaining time in the organization's subscription."
   },

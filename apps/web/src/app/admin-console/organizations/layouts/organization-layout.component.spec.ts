@@ -226,6 +226,26 @@ describe("OrganizationLayoutComponent", () => {
       });
     });
 
+    describe("canShowServerUsersTab", () => {
+      it("returns true when self-hosted and owner", () => {
+        mockPlatformUtilsService.isSelfHost.mockReturnValue(true);
+
+        expect(component.canShowServerUsersTab(makeOrg({ isOwner: true }))).toBe(true);
+      });
+
+      it("returns false when not self-hosted", () => {
+        mockPlatformUtilsService.isSelfHost.mockReturnValue(false);
+
+        expect(component.canShowServerUsersTab(makeOrg({ isOwner: true }))).toBe(false);
+      });
+
+      it("returns false when not owner", () => {
+        mockPlatformUtilsService.isSelfHost.mockReturnValue(true);
+
+        expect(component.canShowServerUsersTab(makeOrg({ isOwner: false }))).toBe(false);
+      });
+    });
+
     describe("canShowMembersTab", () => {
       it("returns true when canManageUsers", () => {
         expect(component.canShowMembersTab(makeOrg({ canManageUsers: true }))).toBe(true);

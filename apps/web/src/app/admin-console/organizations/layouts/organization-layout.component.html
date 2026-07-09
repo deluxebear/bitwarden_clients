@@ -94,6 +94,11 @@
         *ngIf="organization.isOwner"
       ></bit-nav-item>
       <bit-nav-item
+        [text]="'serverUsers' | i18n"
+        route="settings/server-users"
+        *ngIf="canShowServerUsersTab(organization)"
+      ></bit-nav-item>
+      <bit-nav-item
         [text]="'policies' | i18n"
         route="settings/policies"
         *ngIf="organization.canManagePolicies"

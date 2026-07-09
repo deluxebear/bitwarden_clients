@@ -13134,6 +13134,48 @@
   "noOrganizations": {
     "message": "没有可列出的组织"
   },
+  "serverUsers": {
+    "message": "服务器用户管理"
+  },
+  "serverUsersDescription": {
+    "message": "此列表显示此自托管服务器上的注册账号。不属于任何组织的用户仍可登录，直到服务器账号被删除。"
+  },
+  "searchServerUsers": {
+    "message": "搜索服务器用户"
+  },
+  "noServerUsersInList": {
+    "message": "未找到服务器用户。"
+  },
+  "organizationMemberships": {
+    "message": "组织成员关系"
+  },
+  "deleteServerUser": {
+    "message": "删除服务器用户"
+  },
+  "deleteServerUserConfirmation": {
+    "message": "要从此自托管服务器中删除 $EMAIL$ 吗？这会永久删除该账号及其个人密码库数据。",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "user@example.com"
+      }
+    }
+  },
+  "deletedServerUser": {
+    "message": "已删除 $EMAIL$。",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "user@example.com"
+      }
+    }
+  },
+  "loadServerUsersFailed": {
+    "message": "无法加载服务器用户。"
+  },
+  "deleteServerUserFailed": {
+    "message": "无法删除服务器用户。"
+  },
   "yourProviderSubscriptionCredit": {
     "message": "您的提供商订阅将获得此组织订阅剩余时间内的余额。"
   },

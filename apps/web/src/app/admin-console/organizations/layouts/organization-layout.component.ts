@@ -143,6 +143,10 @@ export class OrganizationLayoutComponent {
     return canAccessSettingsTab(organization);
   }
 
+  canShowServerUsersTab(organization: Organization): boolean {
+    return this.platformUtilsService.isSelfHost() && organization.isOwner;
+  }
+
   canShowMembersTab(organization: Organization): boolean {
     return canAccessMembersTab(organization);
   }

@@ -1,0 +1,102 @@
+<app-header>
+  <bit-search
+    [placeholder]="'searchServerUsers' | i18n"
+    [formControl]="searchControl"
+    class="tw-w-80"
+  ></bit-search>
+  <button
+    bitButton
+    type="button"
+    buttonType="secondary"
+    (click)="loadUsers()"
+    startIcon="bwi-refresh"
+  >
+    {{ "refresh" | i18n }}
+  </button>
+</app-header>
+
+<p class="tw-mb-4 tw-text-muted">{{ "serverUsersDescription" | i18n }}</p>
+
+<ng-container *ngIf="loading()">
+  <i
+    class="bwi bwi-spinner bwi-spin tw-text-muted"
+    title="{{ 'loading' | i18n }}"
+    aria-hidden="true"
+  ></i>
+  <span class="tw-sr-only">{{ "loading" | i18n }}</span>
+</ng-container>
+
+<ng-container *ngIf="!loading()">
+  <p *ngIf="loadError()">{{ "loadServerUsersFailed" | i18n }}</p>
+  <p *ngIf="!loadError() && !dataSource.filteredData?.length">
+    {{ "noServerUsersInList" | i18n }}
+  </p>
+
+  <bit-table *ngIf="!loadError() && dataSource.filteredData?.length" [dataSource]="dataSource">
+    <ng-container header>
+      <tr>
+        <th bitCell bitSortable="email" default>{{ "email" | i18n }}</th>
+        <th bitCell>{{ "emailVerified" | i18n }}</th>
+        <th bitCell>{{ "twoStepLogin" | i18n }}</th>
+        <th bitCell>{{ "organizationMemberships" | i18n }}</th>
+        <th bitCell bitSortable="creationDate">{{ "dateCreated" | i18n }}</th>
+        <th bitCell class="tw-w-10">
+          <span class="tw-sr-only">{{ "options" | i18n }}</span>
+        </th>
+      </tr>
+    </ng-container>
+    <ng-template body let-rows$>
+      <tr bitRow *ngFor="let user of rows$ | async">
+        <td bitCell>
+          <div class="tw-flex tw-items-center">
+            <bit-avatar
+              [text]="user.name ?? user.email"
+              [id]="user.id"
+              class="tw-mr-3"
+            ></bit-avatar>
+            <div class="tw-flex tw-min-w-0 tw-flex-col">
+              <span class="tw-truncate tw-font-medium">{{ user.name ?? user.email }}</span>
+              <span class="tw-truncate tw-text-muted" *ngIf="user.name">{{ user.email }}</span>
+            </div>
+          </div>
+        </td>
+        <td bitCell>
+          <span bitBadge class="tw-text-xs" [variant]="user.emailVerified ? 'success' : 'warning'">
+            {{ (user.emailVerified ? "verified" : "unverified") | i18n }}
+          </span>
+        </td>
+        <td bitCell>
+          <span
+            bitBadge
+            class="tw-text-xs"
+            [variant]="user.twoFactorEnabled ? 'success' : 'secondary'"
+          >
+            {{ (user.twoFactorEnabled ? "enabled" : "disabled") | i18n }}
+          </span>
+        </td>
+        <td bitCell>
+          <bit-badge-list
+            *ngIf="organizationNames(user).length; else noOrganizations"
+            [items]="organizationNames(user)"
+            [maxItems]="3"
+            variant="secondary"
+          ></bit-badge-list>
+          <ng-template #noOrganizations>
+            <span class="tw-text-muted">{{ "noOrganizations" | i18n }}</span>
+          </ng-template>
+        </td>
+        <td bitCell>{{ user.creationDate | date: "medium" }}</td>
+        <td bitCell>
+          <button
+            type="button"
+            bitIconButton="bwi-trash"
+            size="small"
+            appA11yTitle="{{ 'delete' | i18n }}"
+            [disabled]="user.id === currentUserId() || deletingUserId() === user.id"
+            (click)="deleteUser(user)"
+          ></button>
+        </td>
+      </tr>
+    </ng-template>
+  </bit-table>
+</ng-container>

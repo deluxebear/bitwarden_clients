@@ -1,8 +1,9 @@
-import { NgModule } from "@angular/core";
+import { inject, NgModule } from "@angular/core";
 import { RouterModule, Routes } from "@angular/router";
 
 import { canAccessSettingsTab } from "@bitwarden/common/admin-console/abstractions/organization/organization.service.abstraction";
 import { Organization } from "@bitwarden/common/admin-console/models/domain/organization";
+import { PlatformUtilsService } from "@bitwarden/common/platform/abstractions/platform-utils.service";
 
 import { organizationPermissionsGuard } from "../../organizations/guards/org-permissions.guard";
 import { organizationRedirectGuard } from "../../organizations/guards/org-redirect.guard";
@@ -10,6 +11,9 @@ import { PoliciesComponent, PoliciesDeactivateGuard } from "../../organizations/
 
 import { AccountComponent } from "./account.component";
 import { TwoFactorSetupComponent } from "./two-factor-setup.component";
+
+const canAccessSelfHostedServerUsers = (organization: Organization) =>
+  inject(PlatformUtilsService).isSelfHost() && organization.isOwner;
 
 const routes: Routes = [
   {
@@ -36,6 +40,15 @@ const routes: Routes = [
         canActivate: [organizationPermissionsGuard((o) => o.use2fa && o.isOwner)],
         data: {
           titleId: "twoStepLogin",
+        },
+      },
+      {
+        path: "server-users",
+        loadComponent: () =>
+          import("./server-users.component").then((mod) => mod.ServerUsersComponent),
+        canActivate: [organizationPermissionsGuard(canAccessSelfHostedServerUsers)],
+        data: {
+          titleId: "serverUsers",
         },
       },
       {
