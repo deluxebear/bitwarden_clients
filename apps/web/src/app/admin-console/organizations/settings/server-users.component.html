@@ -89,12 +89,40 @@
         <td bitCell>
           <button
             type="button"
-            bitIconButton="bwi-trash"
+            bitIconButton="bwi-ellipsis-v"
             size="small"
-            appA11yTitle="{{ 'delete' | i18n }}"
-            [disabled]="user.id === currentUserId() || deletingUserId() === user.id"
-            (click)="deleteUser(user)"
+            [bitMenuTriggerFor]="rowMenu"
+            appA11yTitle="{{ 'options' | i18n }}"
+            [disabled]="deletingUserId() === user.id || updatingMembershipUserId() === user.id"
           ></button>
+          <bit-menu #rowMenu>
+            <button
+              *ngIf="canAddToCurrentOrganization(user)"
+              type="button"
+              bitMenuItem
+              (click)="addUserToCurrentOrganization(user)"
+            >
+              {{ "addServerUserToCurrentOrganization" | i18n }}
+            </button>
+            <button
+              *ngIf="canRevokeCurrentOrganizationAccess(user)"
+              type="button"
+              bitMenuItem
+              (click)="revokeCurrentOrganizationAccess(user)"
+            >
+              {{ "revokeServerUserOrganizationAccess" | i18n }}
+            </button>
+            <bit-menu-divider></bit-menu-divider>
+            <button
+              type="button"
+              bitMenuItem
+              variant="danger"
+              [disabled]="user.id === currentUserId()"
+              (click)="deleteUser(user)"
+            >
+              {{ "deleteServerUser" | i18n }}
+            </button>
+          </bit-menu>
         </td>
       </tr>
     </ng-template>

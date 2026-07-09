@@ -13416,6 +13416,54 @@
       }
     }
   },
+  "addServerUserToCurrentOrganization": {
+    "message": "Add to current organization"
+  },
+  "addServerUserToCurrentOrganizationConfirmation": {
+    "message": "Add $EMAIL$ to the current organization? The user will appear under members that need confirmation before organization vault access is available.",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "user@example.com"
+      }
+    }
+  },
+  "addedServerUserToCurrentOrganization": {
+    "message": "Added $EMAIL$ to the current organization.",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "user@example.com"
+      }
+    }
+  },
+  "addServerUserToCurrentOrganizationFailed": {
+    "message": "Could not add server user to the current organization."
+  },
+  "revokeServerUserOrganizationAccess": {
+    "message": "Revoke current organization access"
+  },
+  "revokeServerUserOrganizationAccessConfirmation": {
+    "message": "Revoke $EMAIL$'s access to the current organization? The server account will remain and can still sign in.",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "user@example.com"
+      }
+    }
+  },
+  "revokedServerUserOrganizationAccess": {
+    "message": "Revoked $EMAIL$'s current organization access.",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "user@example.com"
+      }
+    }
+  },
+  "revokeServerUserOrganizationAccessFailed": {
+    "message": "Could not revoke current organization access."
+  },
   "loadServerUsersFailed": {
     "message": "Could not load server users."
   },

@@ -13170,6 +13170,54 @@
       }
     }
   },
+  "addServerUserToCurrentOrganization": {
+    "message": "加入当前组织"
+  },
+  "addServerUserToCurrentOrganizationConfirmation": {
+    "message": "要将 $EMAIL$ 加入当前组织吗？该用户会先出现在成员的“需要确认”列表中，确认后才可访问组织密码库。",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "user@example.com"
+      }
+    }
+  },
+  "addedServerUserToCurrentOrganization": {
+    "message": "已将 $EMAIL$ 加入当前组织。",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "user@example.com"
+      }
+    }
+  },
+  "addServerUserToCurrentOrganizationFailed": {
+    "message": "无法将服务器用户加入当前组织。"
+  },
+  "revokeServerUserOrganizationAccess": {
+    "message": "撤销当前组织访问权限"
+  },
+  "revokeServerUserOrganizationAccessConfirmation": {
+    "message": "要撤销 $EMAIL$ 对当前组织的访问权限吗？服务器账号会保留，并且仍可登录。",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "user@example.com"
+      }
+    }
+  },
+  "revokedServerUserOrganizationAccess": {
+    "message": "已撤销 $EMAIL$ 的当前组织访问权限。",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "user@example.com"
+      }
+    }
+  },
+  "revokeServerUserOrganizationAccessFailed": {
+    "message": "无法撤销当前组织访问权限。"
+  },
   "loadServerUsersFailed": {
     "message": "无法加载服务器用户。"
   },
