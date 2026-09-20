@@ -7,18 +7,15 @@ import { CipherListView } from "@bitwarden/sdk-internal";
 
 import { UriMatchStrategySetting } from "../../models/domain/domain-service";
 import { UploadOptions } from "../../platform/abstractions/file-upload/file-upload.service";
-import { SymmetricCryptoKey } from "../../platform/models/domain/symmetric-crypto-key";
 import { CipherId, CollectionId, OrganizationId, UserId } from "../../types/guid";
 import { UserKey } from "../../types/key";
 import { CipherType } from "../enums/cipher-type";
 import { CipherData } from "../models/data/cipher.data";
 import { LocalData } from "../models/data/local.data";
 import { Cipher } from "../models/domain/cipher";
-import { Field } from "../models/domain/field";
 import { CipherWithIdRequest } from "../models/request/cipher-with-id.request";
 import { AttachmentView } from "../models/view/attachment.view";
 import { CipherView } from "../models/view/cipher.view";
-import { FieldView } from "../models/view/field.view";
 import { AddEditCipherInfo } from "../types/add-edit-cipher-info";
 import { CipherViewLike } from "../utils/cipher-view-like-utils";
 
@@ -26,6 +23,12 @@ export type EncryptionContext = {
   cipher: Cipher;
   /** The Id of the user that encrypted the cipher. It should always represent a UserId, even for Organization-owned ciphers */
   encryptedFor: UserId;
+  /**
+   * Hex-encoded id of the key the cipher's fields, or the cipher-key (if present) are wrapped under
+   * - the organization key for Organization-owned ciphers, otherwise the user key - captured at the
+   * time the cipher was encrypted. The server uses it to reject writes made under a wrong key.
+   */
+  encryptedByKeyId?: string;
 };
 
 export abstract class CipherService implements UserKeyRotationDataProvider<CipherWithIdRequest> {
@@ -69,8 +72,6 @@ export abstract class CipherService implements UserKeyRotationDataProvider<Ciphe
    * @returns A promise that resolves to an array of encryption contexts
    */
   abstract encryptMany(models: CipherView[], userId: UserId): Promise<EncryptionContext[]>;
-  abstract encryptFields(fieldsModel: FieldView[], key: SymmetricCryptoKey): Promise<Field[]>;
-  abstract encryptField(fieldModel: FieldView, key: SymmetricCryptoKey): Promise<Field>;
   abstract get(id: string, userId: UserId): Promise<Cipher>;
   abstract getAll(userId: UserId): Promise<Cipher[]>;
   abstract getAllDecrypted(userId: UserId): Promise<CipherView[]>;

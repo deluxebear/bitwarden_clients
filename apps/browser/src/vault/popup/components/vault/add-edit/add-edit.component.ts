@@ -88,7 +88,7 @@ class QueryParams {
     this.clone = params.clone === "true";
     this.folderId = params.folderId;
     this.organizationId = params.organizationId;
-    this.collectionId = params.collectionId;
+    this.collectionIds = params.collectionIds;
     this.uri = params.uri;
     this.username = params.username;
     this.name = params.name;
@@ -123,9 +123,10 @@ class QueryParams {
   organizationId?: OrganizationId;
 
   /**
-   * Optional collectionId to pre-select.
+   * Optional collectionId(s) to pre-select.
+   * Can be a single collectionId or comma-separated list of collectionIds.
    */
-  collectionId?: CollectionId;
+  collectionIds?: string;
 
   /**
    * Optional URI to pre-fill for login ciphers.
@@ -192,6 +193,11 @@ export type AddEditQueryParams = Partial<Record<keyof QueryParams, string>>;
   ],
 })
 export class AddEditComponent implements OnInit, OnDestroy {
+  protected readonly btnTextAddCreateFeatureFlag = toSignal(
+    this.configService.getFeatureFlag$(FeatureFlag.PM32380_BtnTextAddCreate),
+    { initialValue: false },
+  );
+
   readonly cipherFormComponent = viewChild(CipherFormComponent);
 
   headerText: string;
@@ -493,8 +499,9 @@ export class AddEditComponent implements OnInit, OnDestroy {
     if (params.organizationId) {
       initialValues.organizationId = params.organizationId;
     }
-    if (params.collectionId) {
-      initialValues.collectionIds = [params.collectionId];
+    if (params.collectionIds) {
+      const collectionIds = (params.collectionIds ?? "")?.split(",");
+      initialValues.collectionIds = collectionIds as CollectionId[];
     }
     if (params.uri) {
       initialValues.loginUri = params.uri;
@@ -520,24 +527,60 @@ export class AddEditComponent implements OnInit, OnDestroy {
     const isEditMode = mode === "edit" || mode === "partial-edit";
     const newItemTypesEnabled = this.pm32009NewItemTypesEnabled();
     const translation = {
-      [CipherType.Login]: isEditMode ? "editItemHeaderLogin" : "newItemHeaderLogin",
-      [CipherType.Card]: isEditMode ? "editItemHeaderCard" : "newItemHeaderCard",
-      [CipherType.Identity]: isEditMode ? "editItemHeaderIdentity" : "newItemHeaderIdentity",
+      [CipherType.Login]: isEditMode
+        ? this.btnTextAddCreateFeatureFlag()
+          ? "editItemHeaderLoginSentenceCase"
+          : "editItemHeaderLogin"
+        : this.btnTextAddCreateFeatureFlag()
+          ? "addItemHeaderLogin"
+          : "newItemHeaderLogin",
+      [CipherType.Card]: isEditMode
+        ? this.btnTextAddCreateFeatureFlag()
+          ? "editItemHeaderCardSentenceCase"
+          : "editItemHeaderCard"
+        : this.btnTextAddCreateFeatureFlag()
+          ? "addItemHeaderCard"
+          : "newItemHeaderCard",
+      [CipherType.Identity]: isEditMode
+        ? this.btnTextAddCreateFeatureFlag()
+          ? "editItemHeaderIdentitySentenceCase"
+          : "editItemHeaderIdentity"
+        : this.btnTextAddCreateFeatureFlag()
+          ? "addItemHeaderIdentity"
+          : "newItemHeaderIdentity",
       [CipherType.SecureNote]: newItemTypesEnabled
         ? isEditMode
           ? "editItemHeaderSecureNote"
-          : "newItemHeaderSecureNote"
+          : this.btnTextAddCreateFeatureFlag()
+            ? "addItemHeaderSecureNote"
+            : "newItemHeaderSecureNote"
         : isEditMode
-          ? "editItemHeaderNote"
-          : "newItemHeaderNote",
-      [CipherType.SshKey]: isEditMode ? "editItemHeaderSshKey" : "newItemHeaderSshKey",
+          ? this.btnTextAddCreateFeatureFlag()
+            ? "editItemHeaderNoteSentenceCase"
+            : "editItemHeaderNote"
+          : this.btnTextAddCreateFeatureFlag()
+            ? "addItemHeaderNote"
+            : "newItemHeaderNote",
+      [CipherType.SshKey]: isEditMode
+        ? "editItemHeaderSshKey"
+        : this.btnTextAddCreateFeatureFlag()
+          ? "addItemHeaderSshKey"
+          : "newItemHeaderSshKey",
       [CipherType.BankAccount]: isEditMode
         ? "editItemHeaderBankAccount"
-        : "newItemHeaderBankAccount",
+        : this.btnTextAddCreateFeatureFlag()
+          ? "addItemHeaderBankAccount"
+          : "newItemHeaderBankAccount",
       [CipherType.DriversLicense]: isEditMode
         ? "editItemHeaderLicense"
-        : "newItemHeaderDriversLicense",
-      [CipherType.Passport]: isEditMode ? "editItemHeaderPassport" : "newItemHeaderPassport",
+        : this.btnTextAddCreateFeatureFlag()
+          ? "addItemHeaderDriversLicense"
+          : "newItemHeaderDriversLicense",
+      [CipherType.Passport]: isEditMode
+        ? "editItemHeaderPassport"
+        : this.btnTextAddCreateFeatureFlag()
+          ? "addItemHeaderPassport"
+          : "newItemHeaderPassport",
     };
     return this.i18nService.t(translation[type]);
   }

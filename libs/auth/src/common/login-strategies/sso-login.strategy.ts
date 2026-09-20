@@ -175,7 +175,7 @@ export class SsoLoginStrategy extends LoginStrategy {
 
   // TODO: future passkey login strategy will need to support setting user key (decrypting via TDE or admin approval request)
   // so might be worth moving this logic to a common place (base login strategy or a separate service?)
-  protected override async setUserKey(
+  protected override async unlock(
     tokenResponse: IdentityTokenResponse,
     userId: UserId,
   ): Promise<void> {
@@ -322,7 +322,8 @@ export class SsoLoginStrategy extends LoginStrategy {
     );
 
     if (userKey) {
-      await this.keyService.setUserKey(userKey, userId);
+      // TDE unlock during SSO login; the user key comes from DeviceTrustService.decryptUserKeyWithDeviceKey.
+      await this.unlockService.unlockWithDecryptedUserKey(userId, userKey);
     }
   }
 
@@ -340,19 +341,7 @@ export class SsoLoginStrategy extends LoginStrategy {
     }
 
     const userKey = await this.masterPasswordService.decryptUserKeyWithMasterKey(masterKey, userId);
-    await this.keyService.setUserKey(userKey, userId);
-  }
-
-  protected override async setAccountCryptographicState(
-    tokenResponse: IdentityTokenResponse,
-    userId: UserId,
-  ): Promise<void> {
-    if (tokenResponse.accountKeysResponseModel) {
-      await this.accountCryptographicStateService.setAccountCryptographicState(
-        tokenResponse.accountKeysResponseModel.toWrappedAccountCryptographicState(),
-        userId,
-      );
-    }
+    await this.unlockService.unlockWithDecryptedUserKey(userId, userKey);
   }
 
   exportCache(): CacheData {

@@ -21,10 +21,12 @@ import { CipherView } from "@bitwarden/common/vault/models/view/cipher.view";
 import { LoginView } from "@bitwarden/common/vault/models/view/login.view";
 import { CipherViewLike } from "@bitwarden/common/vault/utils/cipher-view-like-utils";
 import { IconButtonModule, MenuModule } from "@bitwarden/components";
+import { ShareLinkMenuItemDirective, ShareLinkService } from "@bitwarden/tools-share";
 import {
   CopyCipherFieldDirective,
   CopyCipherFieldService,
   OrganizationNameBadgeComponent,
+  VaultCopyButtonsService,
 } from "@bitwarden/vault";
 
 import { VaultCipherRowComponent } from "./vault-cipher-row.component";
@@ -62,6 +64,7 @@ describe("VaultCipherRowComponent", () => {
         CopyCipherFieldDirective,
         OrganizationNameBadgeComponent,
         PremiumBadgeComponent,
+        ShareLinkMenuItemDirective,
       ],
       providers: [
         { provide: I18nService, useValue: { t: (key: string) => key } },
@@ -88,6 +91,14 @@ describe("VaultCipherRowComponent", () => {
         {
           provide: PlatformUtilsService,
           useValue: mock<PlatformUtilsService>(),
+        },
+        {
+          provide: VaultCopyButtonsService,
+          useValue: { showQuickCopyActions$: new BehaviorSubject(false).asObservable() },
+        },
+        {
+          provide: ShareLinkService,
+          useValue: { cipherCanBeShared$: () => of(false) },
         },
       ],
     }).compileComponents();

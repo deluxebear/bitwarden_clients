@@ -1,5 +1,4 @@
 import {
-  asyncScheduler,
   combineLatest,
   concatMap,
   Observable,
@@ -18,12 +17,14 @@ import {
   throwIfEmpty,
   firstValueFrom,
   filter,
-  throttleTime,
 } from "rxjs";
 
 // This import has been flagged as unallowed for this class. It may be involved in a circular dependency loop.
 // eslint-disable-next-line no-restricted-imports
 import { KeyService, KdfConfigService } from "@bitwarden/key-management";
+// eslint-disable-next-line no-restricted-imports
+import { EncString } from "@bitwarden/legacy-crypto";
+import { ManagedSettingsService } from "@bitwarden/managed-settings";
 import {
   PasswordManagerClient,
   ClientSettings,
@@ -37,7 +38,6 @@ import {
 import { ApiService } from "../../../abstractions/api.service";
 import { AccountInfo, AccountService } from "../../../auth/abstractions/account.service";
 import { AccountCryptographicStateService } from "../../../key-management/account-cryptography/account-cryptographic-state.service";
-import { EncString } from "../../../key-management/crypto/models/enc-string";
 import { JsWasmStateBridge } from "../../../key-management/state-bridge";
 import { V2UpgradeTokenStateService } from "../../../key-management/upgrade-token/abstractions/v2-upgrade-token-state.service.abstraction";
 import { OrganizationId, UserId } from "../../../types/guid";
@@ -90,9 +90,11 @@ export class DefaultSdkService implements SdkService {
     concatMap(async (env) => {
       await SdkLoadService.Ready;
       const settings = await this.toSettings(env);
+      const managedSettings = await firstValueFrom(this.managedSettingsService.client$);
       const client = await this.sdkClientFactory.createSdkClient(
         new JsTokenProvider(this.apiService),
         settings,
+        managedSettings,
       );
       await this.loadFeatureFlags(client);
       return client;
@@ -117,6 +119,7 @@ export class DefaultSdkService implements SdkService {
     private stateProvider: StateProvider,
     private configService: ConfigService,
     private v2UpgradeTokenStateService: V2UpgradeTokenStateService,
+    private managedSettingsService: ManagedSettingsService,
     private userAgent: string | null = null,
   ) {}
 
@@ -201,9 +204,6 @@ export class DefaultSdkService implements SdkService {
       v2UpgradeToken$,
       SdkLoadService.Ready, // Makes sure we wait (once) for the SDK to be loaded
     ]).pipe(
-      // Do not emit when multiple state values are written in quick succession.
-      // leading: emit immediately on first change; trailing: always process the final state in a burst.
-      throttleTime(20, asyncScheduler, { leading: true, trailing: true }),
       // switchMap is required to allow the clean-up logic to be executed when `combineLatest` emits a new value.
       switchMap(
         ([
@@ -223,9 +223,11 @@ export class DefaultSdkService implements SdkService {
               }
 
               const settings = await this.toSettings(env);
+              const managedSettings = await firstValueFrom(this.managedSettingsService.client$);
               const client = await this.sdkClientFactory.createSdkClient(
                 new JsTokenProvider(this.apiService, userId),
                 settings,
+                managedSettings,
               );
               await this.initializeClient(userId, client);
 

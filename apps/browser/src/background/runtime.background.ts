@@ -2,12 +2,10 @@
 // @ts-strict-ignore
 import { firstValueFrom, map, mergeMap } from "rxjs";
 
-import { LockService } from "@bitwarden/auth/common";
 import { AccountService } from "@bitwarden/common/auth/abstractions/account.service";
 import { AutofillOverlayVisibility, ExtensionCommand } from "@bitwarden/common/autofill/constants";
 import { AutofillSettingsServiceAbstraction } from "@bitwarden/common/autofill/services/autofill-settings.service";
 import { BillingAccountProfileStateService } from "@bitwarden/common/billing/abstractions/account/billing-account-profile-state.service";
-import { ProcessReloadServiceAbstraction } from "@bitwarden/common/key-management/abstractions/process-reload.service";
 import { ConfigService } from "@bitwarden/common/platform/abstractions/config/config.service";
 import { LogService } from "@bitwarden/common/platform/abstractions/log.service";
 import { MessagingService } from "@bitwarden/common/platform/abstractions/messaging.service";
@@ -16,6 +14,7 @@ import { Utils } from "@bitwarden/common/platform/misc/utils";
 import { CipherType } from "@bitwarden/common/vault/enums";
 import { VaultMessages } from "@bitwarden/common/vault/enums/vault-messages.enum";
 import { BiometricsCommands } from "@bitwarden/key-management";
+import { LockService, LockSource } from "@bitwarden/unlock";
 
 // FIXME (PM-22628): Popup imports are forbidden in background
 // eslint-disable-next-line no-restricted-imports
@@ -25,6 +24,7 @@ import {
   openTwoFactorAuthWebAuthnPopout,
 } from "../auth/popup/utils/auth-popout-window";
 import { LockedVaultPendingNotificationsData } from "../autofill/background/abstractions/notification.background";
+import { AutofillOrchestrator } from "../autofill/background/autofill-orchestrator";
 import { isDefaultPasswordManagerPromptFeatureEnabled } from "../autofill/default-password-manager-prompt-feature.util";
 import { DefaultPasswordManagerPromptStateAccessor } from "../autofill/default-password-manager-prompt-state.accessor";
 import { completePendingDefaultPasswordManagerApply } from "../autofill/default-password-manager-session.util";
@@ -33,9 +33,11 @@ import { AutofillLifecycleService } from "../autofill/services/abstractions/auto
 import { AutofillService } from "../autofill/services/abstractions/autofill.service";
 import { FORCE_TARGETING_RULES_UPDATE_COMMAND } from "../autofill/services/targeting-rules-data.service";
 import { BrowserApi } from "../platform/browser/browser-api";
+import BrowserPopupUtils from "../platform/browser/browser-popup-utils";
 import { BrowserEnvironmentService } from "../platform/services/browser-environment.service";
 import BrowserInitialInstallService from "../platform/services/browser-initial-install.service";
 import { BrowserPlatformUtilsService } from "../platform/services/platform-utils/browser-platform-utils.service";
+import { getWebExtSender } from "../platform/utils/web-ext-sender";
 
 import MainBackground from "./main.background";
 
@@ -50,7 +52,6 @@ export default class RuntimeBackground {
     private autofillService: AutofillService,
     private platformUtilsService: BrowserPlatformUtilsService,
     private autofillSettingsService: AutofillSettingsServiceAbstraction,
-    private processReloadService: ProcessReloadServiceAbstraction,
     private environmentService: BrowserEnvironmentService,
     private messagingService: MessagingService,
     private logService: LogService,
@@ -62,6 +63,7 @@ export default class RuntimeBackground {
     private browserInitialInstallService: BrowserInitialInstallService,
     private autofillLifecycleService: AutofillLifecycleService,
     private defaultPasswordManagerPromptStateAccessor: DefaultPasswordManagerPromptStateAccessor,
+    private autofillOrchestrator: AutofillOrchestrator,
   ) {
     // onInstalled listener must be wired up before anything else, so we do it in the ctor
     chrome.runtime.onInstalled.addListener((details: any) => {
@@ -101,6 +103,7 @@ export default class RuntimeBackground {
         BiometricsCommands.CanEnableBiometricUnlock,
         "getUserPremiumStatus",
         "getUrlAutofillTargetingRules",
+        "getBitwardenAutofillAttributeSettings",
       ];
 
       if (messagesWithResponse.includes(msg.command)) {
@@ -147,62 +150,39 @@ export default class RuntimeBackground {
         break;
       case AutofillMessageCommand.pageTransitionDetected:
         // A page-lifecycle monitor reports a transition as a fact. The service
-        // buffers it against monitoring state and decides whether it warrants
-        // a collection.
-        this.autofillLifecycleService.reportPageTransition(sender.tab, sender.frameId);
+        // buffers it against monitoring state and `AutofillOrchestrator` decides whether
+        // it warrants a collection.
+        this.autofillLifecycleService.reportPageTransition(sender.tab, sender.frameId, sender.url);
         break;
       case "collectPageDetailsResponse":
         switch (msg.sender) {
-          case "autofiller":
-          case ExtensionCommand.AutofillCommand: {
-            const activeUserId = await firstValueFrom(
-              this.accountService.activeAccount$.pipe(map((a) => a?.id)),
-            );
-            await this.accountService.setAccountActivity(activeUserId, new Date());
-            const totpCode = await this.autofillService.doAutoFillActiveTab(
-              [
-                {
-                  frameId: sender.frameId,
-                  tab: msg.tab,
-                  details: msg.details,
-                },
-              ],
-              msg.sender === ExtensionCommand.AutofillCommand,
-            );
-            if (totpCode != null) {
-              this.platformUtilsService.copyToClipboard(totpCode);
-            }
-            await this.main.updateOverlayCiphers();
+          case ExtensionCommand.AutofillCommand:
+            this.autofillOrchestrator.autofillActiveTabFromCommand({
+              frameId: sender.frameId,
+              tab: msg.tab,
+              details: msg.details,
+            });
             break;
-          }
-          case ExtensionCommand.AutofillCard: {
-            await this.autofillService.doAutoFillActiveTab(
-              [
-                {
-                  frameId: sender.frameId,
-                  tab: msg.tab,
-                  details: msg.details,
-                },
-              ],
-              msg.sender === ExtensionCommand.AutofillCard,
+          case ExtensionCommand.AutofillCard:
+            this.autofillOrchestrator.autofillActiveTabForCipherType(
+              {
+                frameId: sender.frameId,
+                tab: msg.tab,
+                details: msg.details,
+              },
               CipherType.Card,
             );
             break;
-          }
-          case ExtensionCommand.AutofillIdentity: {
-            await this.autofillService.doAutoFillActiveTab(
-              [
-                {
-                  frameId: sender.frameId,
-                  tab: msg.tab,
-                  details: msg.details,
-                },
-              ],
-              msg.sender === ExtensionCommand.AutofillIdentity,
+          case ExtensionCommand.AutofillIdentity:
+            this.autofillOrchestrator.autofillActiveTabForCipherType(
+              {
+                frameId: sender.frameId,
+                tab: msg.tab,
+                details: msg.details,
+              },
               CipherType.Identity,
             );
             break;
-          }
           case "contextMenu":
             clearTimeout(this.autofillTimeout);
             this.pageDetailsToAutoFill.push({
@@ -241,12 +221,19 @@ export default class RuntimeBackground {
         return result;
       }
       case "getUrlAutofillTargetingRules": {
-        return await this.main.domainSettingsService.getTargetingRulesForUrl(
-          // Because content scripts are injected into all _frames_, we give precedence
-          // to targeting rules matching by frame URI (`sender.url`) over tab URI, to avoid
-          // selector collision with coincidentally-matching in-frame structures.
-          sender.url ?? sender.tab?.url,
-        );
+        const senderURL = await this.resolveSenderFrameUrl(sender);
+        const targetingRulesForUrl =
+          await this.main.domainSettingsService.getTargetingRulesForUrl(senderURL);
+
+        return targetingRulesForUrl;
+      }
+      case "getBitwardenAutofillAttributeSettings": {
+        const [honorBitwardenIgnoreAttribute, honorBitwardenAutofillAttribute] = await Promise.all([
+          firstValueFrom(this.autofillSettingsService.honorBitwardenIgnoreAttribute$),
+          firstValueFrom(this.autofillSettingsService.honorBitwardenAutofillAttribute$),
+        ]);
+
+        return { honorBitwardenIgnoreAttribute, honorBitwardenAutofillAttribute };
       }
       case "authResult": {
         if (!(await this.isValidVaultReferrer(msg.referrer))) {
@@ -274,6 +261,34 @@ export default class RuntimeBackground {
         break;
       }
     }
+  }
+
+  /** Resolves the URL currently loaded in the frame a message came from. */
+  private async resolveSenderFrameUrl(
+    sender: chrome.runtime.MessageSender,
+  ): Promise<string | undefined> {
+    const tabId = sender.tab?.id;
+    const frameId = sender.frameId;
+
+    if (tabId != null && frameId != null) {
+      // `frame.url` takes precedence over `tab.url` to minimize selector
+      // collisions between frames with similar in-frame markup. `frame.url`
+      // takes precedence over `sender.url` because the sender's value is pinned
+      // to the frame URI when the port was opened.
+      const frameUrl = await BrowserApi.getFrameDetails({ tabId, frameId })
+        .then((frame) => frame?.url)
+        .catch((): undefined => undefined);
+
+      if (frameUrl) {
+        return frameUrl;
+      }
+    }
+
+    if (frameId === 0 && sender.tab?.url) {
+      return sender.tab.url;
+    }
+
+    return sender.url ?? sender.tab?.url;
   }
 
   private async handleSetBitwardenAsDefaultPasswordManager(
@@ -311,8 +326,6 @@ export default class RuntimeBackground {
           await closeUnlockPopout();
         }
 
-        this.processReloadService.cancelProcessReload();
-
         if (item) {
           await BrowserApi.focusWindow(item.commandToRetry.sender.tab.windowId);
           await BrowserApi.focusTab(item.commandToRetry.sender.tab.id);
@@ -338,17 +351,17 @@ export default class RuntimeBackground {
         this.lockedVaultPendingNotifications = [];
         break;
       case "lockVault":
-        await this.lockService.lock(msg.userId);
+        await this.lockService.lock(msg.userId, LockSource.Manual);
         break;
       case "lockAll":
         {
-          await this.lockService.lockAll();
+          await this.lockService.lockAll(msg.source);
           this.messagingService.send("lockAllFinished", { requestId: msg.requestId });
         }
         break;
       case "lockUser":
         {
-          await this.lockService.lock(msg.userId);
+          await this.lockService.lock(msg.userId, msg.source);
           this.messagingService.send("lockUserFinished", {
             requestId: msg.requestId,
           });
@@ -433,6 +446,16 @@ export default class RuntimeBackground {
         await this.main.clearClipboard(msg.clipboardValue, msg.timeoutMs);
         break;
       }
+      case "reloadExtension": {
+        // Close any open popups first so the runtime reload doesn't strand them with an
+        // invalidated context. The popup closes itself upon receiving this message; poll to
+        // confirm before reloading. Unlike process reload (which is skipped while the vault is
+        // unlocked), this reload must always run — e.g. to register the native messaging host
+        // after the nativeMessaging permission is granted from the unlocked settings page.
+        await BrowserPopupUtils.waitForAllPopupsClose();
+        BrowserApi.reloadExtension();
+        break;
+      }
     }
   }
 
@@ -443,9 +466,7 @@ export default class RuntimeBackground {
    * @returns true if message fails validation
    */
   private async executeMessageActionOrOpenPopup(
-    message: {
-      webExtSender: chrome.runtime.MessageSender;
-    },
+    message: Record<PropertyKey, unknown>,
     messageAction: () => Promise<void>,
   ): Promise<boolean> {
     const hasAccounts = await firstValueFrom(
@@ -459,7 +480,7 @@ export default class RuntimeBackground {
     }
 
     const isValidVaultReferrer = await this.isValidVaultReferrer(
-      Utils.getHostname(message?.webExtSender?.origin),
+      Utils.getHostname(getWebExtSender(message)?.origin),
     );
 
     // When the referrer is not a known vault and the message is external, reject the message
@@ -494,7 +515,7 @@ export default class RuntimeBackground {
   }
 
   private async autofillPage(tabToAutoFill: chrome.tabs.Tab) {
-    const totpCode = await this.autofillService.doAutoFill({
+    const result = await this.autofillService.doAutoFill({
       tab: tabToAutoFill,
       cipher: this.main.loginToAutoFill,
       pageDetails: this.pageDetailsToAutoFill,
@@ -502,8 +523,8 @@ export default class RuntimeBackground {
       allowTotpAutofill: true,
     });
 
-    if (totpCode != null) {
-      this.platformUtilsService.copyToClipboard(totpCode);
+    if (result.didAutofill && result.totp != null) {
+      this.platformUtilsService.copyToClipboard(result.totp);
     }
 
     // reset

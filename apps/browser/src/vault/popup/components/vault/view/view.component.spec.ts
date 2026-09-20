@@ -39,6 +39,7 @@ import { LoginUriView } from "@bitwarden/common/vault/models/view/login-uri.view
 import { CipherAuthorizationService } from "@bitwarden/common/vault/services/cipher-authorization.service";
 import { TaskService } from "@bitwarden/common/vault/tasks";
 import { DialogService, ToastService } from "@bitwarden/components";
+import { ShareLinkService } from "@bitwarden/tools-share";
 import {
   ArchiveCipherUtilitiesService,
   CopyCipherFieldService,
@@ -256,6 +257,10 @@ describe("ViewComponent", () => {
         {
           provide: ChangeLoginPasswordService,
           useValue: mock<ChangeLoginPasswordService>(),
+        },
+        {
+          provide: ShareLinkService,
+          useValue: { cipherCanBeShared$: () => of(false) },
         },
       ],
     })
@@ -847,7 +852,7 @@ describe("ViewComponent", () => {
       expect(result).toBe(false);
     }));
 
-    it("returns false for SshKey type", fakeAsync(() => {
+    it("returns true for SshKey type", fakeAsync(() => {
       autofillAllowed$.next(true);
 
       // Recreate component to pick up the signal values
@@ -866,7 +871,7 @@ describe("ViewComponent", () => {
 
       const result = component.showAutofillButton();
 
-      expect(result).toBe(false);
+      expect(result).toBe(true);
     }));
 
     it("returns false when cipher is archived", fakeAsync(() => {

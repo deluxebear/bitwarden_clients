@@ -23,11 +23,13 @@ import { Message, MessageSender } from "@bitwarden/common/platform/messaging";
 // eslint-disable-next-line no-restricted-imports -- For dependency creation
 import { SubjectMessageSender } from "@bitwarden/common/platform/messaging/internal";
 import { DefaultEnvironmentService } from "@bitwarden/common/platform/services/default-environment.service";
+import { DefaultGovModeService } from "@bitwarden/common/platform/services/default-gov-mode.service";
 import { MemoryStorageService } from "@bitwarden/common/platform/services/memory-storage.service";
 import { MigrationBuilderService } from "@bitwarden/common/platform/services/migration-builder.service";
 import { MigrationRunner } from "@bitwarden/common/platform/services/migration-runner";
 import { DefaultBiometricStateService } from "@bitwarden/key-management";
-import { NodeCryptoFunctionService } from "@bitwarden/node/services/node-crypto-function.service";
+// eslint-disable-next-line no-restricted-imports
+import { NodeCryptoFunctionService } from "@bitwarden/legacy-crypto/node";
 import {
   DefaultActiveUserStateProvider,
   DefaultDerivedStateProvider,
@@ -38,6 +40,9 @@ import {
 } from "@bitwarden/state-internal";
 import { SerializedMemoryStorageService, StorageServiceProvider } from "@bitwarden/storage-core";
 
+import { SSOLocalhostCallbackService } from "./auth/services/sso-localhost-callback.service";
+import { DesktopAutofillMain } from "./autofill/main/main-desktop-autofill.service";
+import { MainDesktopAutotypeMvpService } from "./autofill/main/main-desktop-autotype-mvp.service";
 import { MainDesktopAutotypeService } from "./autofill/main/main-desktop-autotype.service";
 import { MainSshAgentService } from "./autofill/main/main-ssh-agent.service";
 import { DesktopAutofillSettingsService } from "./autofill/services/desktop-autofill-settings.service";
@@ -47,13 +52,14 @@ import { MainBiometricsService } from "./key-management/biometrics/main-biometri
 import { MenuMain } from "./main/menu/menu.main";
 import { AUTOSTART_FLAG, MessagingMain } from "./main/messaging.main";
 import { NativeMessagingMain } from "./main/native-messaging.main";
+import { isMacAppStore } from "./main/platform-utils.main";
 import { PowerMonitorMain } from "./main/power-monitor.main";
 import { SsoCookieMain } from "./main/sso-cookie.main";
 import { ChromiumImporterService } from "./main/tools/import/chromium-importer.service";
 import { TrayMain } from "./main/tray.main";
 import { UpdaterMain } from "./main/updater.main";
 import { WindowMain } from "./main/window.main";
-import { NativeAutofillMain } from "./platform/main/autofill/native-autofill.main";
+import { flagEnabled } from "./platform/flags";
 import { ClipboardMain } from "./platform/main/clipboard.main";
 import { DesktopCredentialStorageListener } from "./platform/main/desktop-credential-storage-listener";
 import { ElectronStorageService } from "./platform/main/electron-storage.service";
@@ -66,10 +72,8 @@ import { ElectronLogMainService } from "./platform/services/electron-log.main.se
 import { EphemeralValueStorageService } from "./platform/services/ephemeral-value-storage.main.service";
 import { I18nMainService } from "./platform/services/i18n.main.service";
 import { IpcMainService } from "./platform/services/ipc.main.service";
-import { SSOLocalhostCallbackService } from "./platform/services/sso-localhost-callback.service";
 import { ElectronMainMessagingService } from "./services/electron-main-messaging.service";
 import { MainSdkLoadService } from "./services/main-sdk-load-service";
-import { isMacAppStore } from "./utils";
 
 export class Main {
   logService: ElectronLogMainService;
@@ -79,6 +83,7 @@ export class Main {
   memoryStorageForStateProviders: SerializedMemoryStorageService;
   messagingService: MessageSender;
   environmentService: DefaultEnvironmentService;
+  govModeService: DefaultGovModeService;
   desktopCredentialStorageListener: DesktopCredentialStorageListener;
   mainBiometricsIpcListener: MainBiometricsIPCListener;
   desktopSettingsService: DesktopSettingsService;
@@ -95,13 +100,14 @@ export class Main {
   biometricsService: DesktopBiometricsService;
   nativeMessagingMain: NativeMessagingMain;
   clipboardMain: ClipboardMain;
-  nativeAutofillMain: NativeAutofillMain;
+  desktopAutofillMain: DesktopAutofillMain;
   desktopAutofillSettingsService: DesktopAutofillSettingsService;
   sharedUnlockSettingsService: SharedUnlockSettingsService;
   versionMain: VersionMain;
   shell: SafeShell;
   sshAgentService: MainSshAgentService;
   sdkLoadService: SdkLoadService;
+  mainDesktopAutotypeMvpService: MainDesktopAutotypeMvpService;
   mainDesktopAutotypeService: MainDesktopAutotypeService;
   ssoCookieMain: SsoCookieMain;
   ipcService: IpcService;
@@ -212,6 +218,8 @@ export class Main {
       accountService,
       process.env.ADDITIONAL_REGIONS as unknown as RegionConfig[],
     );
+
+    this.govModeService = new DefaultGovModeService(this.environmentService);
 
     this.migrationRunner = new MigrationRunner(
       this.storageService,
@@ -342,8 +350,13 @@ export class Main {
 
     new ChromiumImporterService();
 
-    this.nativeAutofillMain = new NativeAutofillMain(this.logService, this.windowMain);
-    void this.nativeAutofillMain.init();
+    this.desktopAutofillMain = new DesktopAutofillMain(this.logService, this.windowMain);
+    void this.desktopAutofillMain.init();
+
+    this.mainDesktopAutotypeMvpService = new MainDesktopAutotypeMvpService(
+      this.logService,
+      this.windowMain,
+    );
 
     this.mainDesktopAutotypeService = new MainDesktopAutotypeService(
       this.logService,
@@ -351,6 +364,7 @@ export class Main {
     );
 
     app.on("will-quit", () => {
+      this.mainDesktopAutotypeMvpService.dispose();
       this.mainDesktopAutotypeService.dispose();
       this.storageService.dispose();
     });
@@ -379,7 +393,10 @@ export class Main {
         // FIXME: Verify that this floating promise is intentional. If it is, add an explanatory comment and ensure there is proper error handling.
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         this.menuMain.init();
-        await this.trayMain.init("Bitwarden", [
+        const trayName = this.i18nService.t(
+          flagEnabled("prereleaseBuild") ? "bitwardenBeta" : "bitwarden",
+        );
+        await this.trayMain.init(trayName, [
           {
             label: this.i18nService.t("lockVault"),
             enabled: false,
@@ -402,12 +419,18 @@ export class Main {
           firstValueFrom(this.desktopAutofillSettingsService.enableDuckDuckGoBrowserIntegration$),
         ]);
 
-        try {
-          // Re-register the native messaging host integrations on startup, in case they are not present
-          if (ddgIntegrationEnabled) {
+        if (ddgIntegrationEnabled) {
+          try {
             await this.nativeMessagingMain.generateDdgManifests();
+          } catch (err) {
+            this.logService.error(
+              "Error while generating DuckDuckGo native messaging manifests:",
+              err,
+            );
           }
+        }
 
+        try {
           await this.nativeMessagingMain.generateManifests();
           await this.nativeMessagingMain.listen();
         } catch (err) {

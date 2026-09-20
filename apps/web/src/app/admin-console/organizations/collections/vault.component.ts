@@ -61,7 +61,13 @@ import { CipherType } from "@bitwarden/common/vault/enums";
 import { TreeNode } from "@bitwarden/common/vault/models/domain/tree-node";
 import { CipherView } from "@bitwarden/common/vault/models/view/cipher.view";
 import { RestrictedItemTypesService } from "@bitwarden/common/vault/services/restricted-item-types.service";
-import { BannerModule, DialogService, NoItemsModule, ToastService } from "@bitwarden/components";
+import {
+  BannerModule,
+  DialogService,
+  StatusLockupComponent,
+  ToastService,
+  TooltipDirective,
+} from "@bitwarden/components";
 import { safeProvider } from "@bitwarden/ui-common";
 import {
   AddItemDialogCloseResult,
@@ -119,10 +125,11 @@ const SearchTextDebounceInterval = 200;
     VaultItemsModule,
     SharedModule,
     BannerModule,
-    NoItemsModule,
+    StatusLockupComponent,
     OrganizationFreeTrialWarningComponent,
     OrganizationResellerRenewalWarningComponent,
     VaultBatchActionComponent,
+    TooltipDirective,
   ],
   providers: [
     RoutedVaultFilterService,
@@ -415,14 +422,15 @@ export class VaultComponent implements OnInit, OnDestroy {
     this.vaultBatchBarService.completed$
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.refresh());
-    combineLatest([this.organization$, this.allCollections$, this.ciphers$])
+    combineLatest([this.organization$, this.allCollections$, this.ciphers$, this.filter$])
       .pipe(takeUntil(this.destroy$))
-      .subscribe(([organization, allCollections, ciphers]) => {
+      .subscribe(([organization, allCollections, ciphers, filter]) => {
         this.vaultBatchBarService.setConfig({
           isOrgVault: true,
           organization,
           allCollections,
           hasCiphers: ciphers.length > 0,
+          inTrash: filter.type === "trash",
         });
       });
 
@@ -663,6 +671,7 @@ export class VaultComponent implements OnInit, OnDestroy {
   protected async openAddItemDialog(): Promise<void> {
     const organization = await firstValueFrom(this.organization$);
     const ref = AddItemDialogComponent.open(this.dialogService, {
+      canCreateCipher: organization?.enabled ?? true,
       canCreateFolder: false,
       canCreateCollection: organization?.canCreateNewCollections ?? false,
       canCreateSshKey: false,

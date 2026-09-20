@@ -34,8 +34,10 @@ pub use agent::BitwardenSSHAgent;
 pub use approval::{ApprovalError, ApprovalRequester, SignApprovalRequest};
 pub use authorization::BitwardenAuthPolicy;
 pub use crypto::PublicKey;
-pub use server::{AuthRequest, SIGNamespace, SignFlags, SignRequest};
+pub use server::{
+    AuthRequest, ConnectionContext, SIGNamespace, SessionBindContext, SignFlags, SignRequest,
+};
 pub use storage::{
-    keydata::SSHKeyData,
+    keydata::{SSHKeyData, UnparsedSSHKeyData},
     keystore::{InMemoryEncryptedKeyStore, KeyStore},
 };

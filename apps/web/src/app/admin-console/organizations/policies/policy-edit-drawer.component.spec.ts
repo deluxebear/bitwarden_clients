@@ -14,11 +14,15 @@ import { I18nService } from "@bitwarden/common/platform/abstractions/i18n.servic
 import { OrganizationId } from "@bitwarden/common/types/guid";
 import { DIALOG_DATA, DialogRef, DialogService, ToastService } from "@bitwarden/components";
 import { KeyService } from "@bitwarden/key-management";
+import { Vfo1TerminologyService } from "@bitwarden/vault";
 
 import { BasePolicyEditComponent, BasePolicyEditDefinition } from "./base-policy-edit.component";
 import { PolicyCategory } from "./pipes/policy-category";
-import { PolicyEditDialogData, PolicyEditDialogResult } from "./policy-edit-dialog.component";
-import { PolicyEditDrawerComponent } from "./policy-edit-drawer.component";
+import {
+  PolicyEditDialogData,
+  PolicyEditDialogResult,
+  PolicyEditDrawerComponent,
+} from "./policy-edit-drawer.component";
 
 const ORG_ID = "org1" as OrganizationId;
 
@@ -28,6 +32,7 @@ const dialogData: PolicyEditDialogData = {
     description: "testDesc",
     type: PolicyType.ResetPassword,
     component: class {} as any,
+    enabled: (response: PolicyResponse) => response.enabled,
     showDescription: true,
     display$: () => of(true),
     category: PolicyCategory.DataControl,
@@ -62,6 +67,7 @@ describe("PolicyEditDrawerComponent", () => {
         { provide: ToastService, useValue: mock<ToastService>() },
         { provide: KeyService, useValue: mock<KeyService>() },
         { provide: DialogService, useValue: mock<DialogService>() },
+        { provide: Vfo1TerminologyService, useValue: { enabled: () => false } },
       ],
       schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();

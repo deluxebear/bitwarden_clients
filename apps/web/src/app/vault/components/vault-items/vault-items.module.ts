@@ -10,7 +10,13 @@ import {
   TooltipDirective,
   IconModule,
 } from "@bitwarden/components";
-import { CopyCipherFieldDirective, VaultItemCopyActionsComponent } from "@bitwarden/vault";
+import { ShareLinkMenuItemDirective } from "@bitwarden/tools-share";
+import {
+  CopyCipherFieldDirective,
+  VaultItemCopyActionsComponent,
+  Vfo1I18nPipe,
+  Vfo1IconPipe,
+} from "@bitwarden/vault";
 
 import { CollectionNameBadgeComponent } from "../../../admin-console/organizations/collections";
 import { GroupBadgeModule } from "../../../admin-console/organizations/collections/group-badge/group-badge.module";
@@ -39,6 +45,9 @@ import { VaultItemsComponent } from "./vault-items.component";
     ScrollLayoutDirective,
     PremiumBadgeComponent,
     IconModule,
+    Vfo1I18nPipe,
+    Vfo1IconPipe,
+    ShareLinkMenuItemDirective,
   ],
   declarations: [VaultItemsComponent, VaultCipherRowComponent, VaultCollectionRowComponent],
   exports: [VaultItemsComponent],
